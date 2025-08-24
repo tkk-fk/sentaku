@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>じぶんで、えらぼう！</title>
+<style>
+  :root{
+    --bg:#ffffff; --fg:#0f172a; --muted:#e5e7eb;
+    --card:#f8fafc; --btn:#111827; --btnfg:#ffffff;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family: system-ui,-apple-system,"Noto Sans JP","Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    line-height:1.4; touch-action: manipulation;
+  }
+  .app{ min-height:100dvh; display:flex; flex-direction:column; gap:8px; }
+  header.panel{ padding:8px 12px; background:var(--card); border-bottom:1px solid var(--muted); }
+  .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  select, input[type="text"]{ font-size:16px; padding:8px 10px; border:1px solid var(--muted); border-radius:10px; background:#fff; }
+  label.inline{ display:inline-flex; align-items:center; gap:6px; padding:6px 8px; border:1px solid var(--muted); border-radius:999px; background:#fff; }
+  button{ font-size:16px; padding:10px 14px; border-radius:12px; border:1px solid var(--muted); background:#fff; cursor:pointer; }
+  button.ghost{ background:transparent; }
+  button.primary{ background:var(--btn); color:var(--btnfg); border-color:var(--btn); }
+  .hint{ font-size:12px; opacity:.7; }
+
+  #editors{ margin-top:8px; display:grid; gap:8px; grid-template-columns: repeat(4,minmax(120px,1fr)); }
+  #editors .colspan2{ grid-column: span 2; }
+  #editors .colspan4{ grid-column: span 4; }
+  .hidden{ display:none !important; }
+
+  main#stage{ flex:1; display:grid; gap:10px; padding:10px; align-items:stretch; justify-items:stretch; }
+  .two{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .three{ grid-template-columns: 1fr 1fr 1fr; }
+  .four{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+  .choice{ display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid var(--muted); border-radius:18px; background:#fff; font-size: clamp(24px, 6vw, 48px); font-weight:700; user-select:none; -webkit-user-select:none; min-height:120px; }
+  .choice .sub{ font-size: clamp(14px, 3.8vw, 22px); margin-top:6px; opacity:.85; }
+  .blue{ background:#eff6ff; border-color:#bfdbfe; }
+  .amber{ background:#fffbeb; border-color:#fde68a; }
+  .green{ background:#ecfdf5; border-color:#bbf7d0; }
+  .red{ background:#fef2f2; border-color:#fecaca; }
+  .yellow{ background:#fefce8; border-color:#fde68a; }
+  .choice:active{ transform: scale(.98); }
+
+  /* オーバーレイ */
+  #overlay{ position: fixed; inset:0; background: rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:20; }
+  #overlay .card{ background:#fff; padding:24px; border-radius:24px; width:min(92vw,680px); text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+  #overlay .big{ font-size: clamp(40px, 10vw, 72px); font-weight:800; }
+  #overlay .big .small{ display:block; font-size: clamp(16px, 4.2vw, 22px); opacity:.75; margin-top:6px; }
+  #overlay .close{ margin-top:14px; }
+
+  /* プレゼン（操作パネル隠し＋ロック） */
+  .presentation header.panel{ display:none; }
+  #unlockButton{ position:fixed; left:8px; top:8px; z-index:31; font-size:14px; padding:6px 10px; border-radius:999px; border:1px solid var(--muted); background:#fff; opacity:0.85; cursor:pointer; display:none; }
+  .presentation #unlockButton{ display:block; }
+
+  #stage, .choice, #overlay{ overscroll-behavior: contain; }
+</style>
+</head>
+<body>
+<div class="app" id="appRoot">
+  <header class="panel" id="panel">
+    <div class="row">
+      <label class="inline">パターン
+        <select id="pattern">
+          <option value="marubatsu">⭕️ / ❌（２択）</option>
+          <option value="yaru">やる？ / やらない？ / ちょっとやる？（3択）</option>
+          <option value="one2four">１ / ２ / ３ / ４（4択）</option>
+        </select>
+      </label>
+      <button id="present" class="primary">全画面</button>
+    </div>
+
+    <!-- エディタ群：選択パターンに合わせて活用 -->
+    <div id="editors">
+      <!-- 2〜3択用エディタ -->
+      <div id="edit2" class="colspan4">
+        <div class="colspan4 hint">選択肢は自由編集できます。</div>
+        <label>1 <input type="text" id="left2" placeholder="例：⭕️ / やる"></label>
+        <label>2 <input type="text" id="right2" placeholder="例：❌ / やらない"></label>
+        <label id="thirdRow">3 <input type="text" id="third" placeholder="例：ちょっとやる？"></label>
+      </div>
+
+      <!-- 4分割用エディタ -->
+      <div id="edit4" class="colspan4 hidden">
+        <div class="colspan4 hint">選択肢は自由編集できます。</div>
+        <label>1 <input type="text" id="t1" placeholder="例：がんばってやる"></label>
+        <label>2 <input type="text" id="t2" placeholder="例：5分たったらやる"></label>
+        <label>3 <input type="text" id="t3" placeholder="例：最後の5分だけやる"></label>
+        <label>4 <input type="text" id="t4" placeholder="例：あいさつだけやる"></label>
+      </div>
+    </div>
+  </header>
+
+  <main id="stage" class="two" aria-live="polite" aria-label="選択エリア"></main>
+
+  <button id="unlockButton" title="表示を元に戻す">🔓解除</button>
+
+  <div id="overlay" role="dialog" aria-modal="true">
+    <div class="card">
+      <div class="big" id="overlayText">⭕️<span class="small"></span></div>
+      <button class="close" id="overlayClose">とじる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+
+  const state = {
+    pattern: 'marubatsu',
+    labels2: {
+      marubatsu: ['⭕️','❌'],
+      yaru: ['やる','やらない','ちょっとやる？']
+    },
+    labels4: ["","","",""]
+  };
+
+  const stage = $('#stage');
+  const patternSel = $('#pattern');
+  const presentBtn = $('#present');
+  const overlay = $('#overlay');
+  const overlayText = $('#overlayText');
+  const overlayClose = $('#overlayClose');
+  const unlockBtn = $('#unlockButton');
+
+  const edit2 = $('#edit2');
+  const edit4 = $('#edit4');
+  const thirdRow = $('#thirdRow');
+
+  const left2 = $('#left2');
+  const right2 = $('#right2');
+  const third = $('#third');
+  const tInputs = [$('#t1'), $('#t2'), $('#t3'), $('#t4')];
+
+  const save = () => localStorage.setItem('selectAid:v7', JSON.stringify(state));
+  const load = () => {
+    try{ const s = JSON.parse(localStorage.getItem('selectAid:v7')); if(s){ Object.assign(state, s); } }catch(e){}
+  };
+
+  const clearStage = () => stage.innerHTML = '';
+
+  const makeChoice = ({text, sub='', cls=''}) => {
+    const btn = document.createElement('button');
+    btn.className = `choice ${cls}`;
+    btn.innerHTML = `<div>${text}</div>${sub? `<div class="sub">${sub}</div>` : ''}`;
+    btn.addEventListener('click', () => onPick(text, sub));
+    return btn;
+  };
+
+  const renderEditors = () => {
+    const isTwoOrThree = (state.pattern === 'marubatsu' || state.pattern === 'yaru');
+    edit2.classList.toggle('hidden', !isTwoOrThree);
+    edit4.classList.toggle('hidden', !(state.pattern === 'one2four'));
+    thirdRow.classList.toggle('hidden', state.pattern !== 'yaru');
+
+    const arr = state.labels2[state.pattern] || null;
+    if(arr){
+      left2.disabled = right2.disabled = false;
+      left2.value = arr[0] ?? '';
+      right2.value = arr[1] ?? '';
+      third.value = arr[2] ?? '';
+      third.disabled = (state.pattern !== 'yaru');
+    }else{
+      left2.disabled = right2.disabled = third.disabled = true;
+      left2.value = right2.value = third.value = '';
+    }
+    tInputs.forEach((el,i)=>{ el.value = state.labels4[i] || ''; });
+  };
+
+  const render = () => {
+    renderEditors();
+    clearStage();
+
+    if(state.pattern === 'marubatsu'){
+      stage.className = 'two';
+      const [L,R] = state.labels2[state.pattern];
+      const left = makeChoice({text:L, cls:'green'});
+      const right = makeChoice({text:R, cls:'red'});
+      stage.appendChild(left);
+      stage.appendChild(right);
+    } else if(state.pattern === 'yaru'){
+      stage.className = 'three';
+      const [A,B,C] = state.labels2[state.pattern];
+      const a = makeChoice({text:A, cls:'green'});
+      const b = makeChoice({text:B, cls:'red'});
+      const c = makeChoice({text:C, cls:'yellow'});
+      [a,b,c].forEach(el => stage.appendChild(el));
+    } else {
+      stage.className = 'four';
+      const labels = state.labels4.slice(0,4).map(s => (s||'').trim());
+      const items = [
+        makeChoice({text:'１', sub: labels[0], cls:'blue'}),
+        makeChoice({text:'２', sub: labels[1], cls:'amber'}),
+        makeChoice({text:'３', sub: labels[2], cls:'green'}),
+        makeChoice({text:'４', sub: labels[3], cls:'red'}),
+      ];
+      items.forEach(el => stage.appendChild(el));
+    }
+    save();
+  };
+
+  const onPick = (text, sub) => {
+    overlayText.innerHTML = sub ? `${text}<span class="small">${sub}</span>` : text;
+    overlay.style.display = 'flex';
+  };
+
+  patternSel.addEventListener('change', () => { state.pattern = patternSel.value; render(); });
+  overlayClose.addEventListener('click', () => overlay.style.display = 'none');
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.style.display = 'none'; });
+
+  left2.addEventListener('input', () => { if(state.labels2[state.pattern]){ state.labels2[state.pattern][0] = left2.value; render(); } });
+  right2.addEventListener('input', () => { if(state.labels2[state.pattern]){ state.labels2[state.pattern][1] = right2.value; render(); } });
+  third.addEventListener('input', () => { if(state.labels2[state.pattern] && state.pattern==='yaru'){ state.labels2[state.pattern][2] = third.value; render(); } });
+
+  tInputs.forEach((el,idx) => {
+    el.addEventListener('input', () => {
+      state.labels4[idx] = el.value;
+      if(state.pattern === 'one2four') render(); else save();
+    });
+  });
+
+  const enterPresentation = () => { document.body.classList.add('presentation'); save(); };
+  const exitPresentation = () => { document.body.classList.remove('presentation'); save(); };
+  presentBtn.addEventListener('click', enterPresentation);
+  unlockBtn.addEventListener('click', exitPresentation);
+
+  const init = () => { load(); patternSel.value = state.pattern; render(); };
+  init();
+})();
+</script>
+</body>
+</html>
