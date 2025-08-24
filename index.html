@@ -4,6 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>じぶんで、えらぼう！</title>
+<!-- PWA 基本設定 -->
+<meta name="theme-color" content="#111827" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root{
     --bg:#ffffff; --fg:#0f172a; --muted:#e5e7eb;
@@ -110,6 +116,7 @@
         </select>
       </label>
       <button id="present" class="primary">全画面</button>
+      <button id="installBtn" class="ghost" hidden>インストール</button>
     </div>
 
     <!-- エディタ群：選択パターンに合わせて活用 -->
@@ -165,6 +172,7 @@
   const overlayText = $('#overlayText');
   const overlayClose = $('#overlayClose');
   const unlockBtn = $('#unlockButton');
+  const installBtn = $('#installBtn');
 
   const edit2 = $('#edit2');
   const edit4 = $('#edit4');
@@ -175,8 +183,8 @@
   const third = $('#third');
   const tInputs = [$('#t1'), $('#t2'), $('#t3'), $('#t4')];
 
-  const save = () => localStorage.setItem('selectAid:v8', JSON.stringify(state));
-  const load = () => { try{ const s = JSON.parse(localStorage.getItem('selectAid:v8')); if(s){ Object.assign(state, s); } }catch(e){} };
+  const save = () => localStorage.setItem('selectAid:v9', JSON.stringify(state));
+  const load = () => { try{ const s = JSON.parse(localStorage.getItem('selectAid:v9')); if(s){ Object.assign(state, s); } }catch(e){} };
 
   const clearStage = () => stage.innerHTML = '';
 
@@ -260,14 +268,111 @@
     });
   });
 
+  // ====== 全画面表示 ======
   const enterPresentation = () => { document.body.classList.add('presentation'); save(); };
   const exitPresentation = () => { document.body.classList.remove('presentation'); save(); };
   presentBtn.addEventListener('click', enterPresentation);
   unlockBtn.addEventListener('click', exitPresentation);
 
+  // ====== PWA: Service Worker 登録 ======
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
+    });
+  }
+
+  // ====== PWA: インストール促進（Android Chrome など） ======
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.hidden = false;
+  });
+  installBtn?.addEventListener('click', async () => {
+    installBtn.disabled = true;
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (e) {}
+      deferredPrompt = null;
+    }
+    setTimeout(() => { installBtn.hidden = true; installBtn.disabled = false; }, 600);
+  });
+
   const init = () => { load(); patternSel.value = state.pattern; render(); };
   init();
 })();
 </script>
+
+<!--
+==== 追加ファイル（GitHubに作成してください）====================================
+1) manifest.webmanifest
+{
+  "name": "じぶんで、えらぼう！",
+  "short_name": "えらぼう",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "lang": "ja",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
+
+2) sw.js （超シンプル版：HTML等をキャッシュしてオフライン動作）
+const CACHE = 'select-aid-v1';
+const CORE = ['./'];
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(CORE);
+    self.skipWaiting();
+  })());
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  // ナビゲーション（ページ遷移）はキャッシュ優先→失敗時はネット→それもダメならキャッシュ最後の版
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match('./');
+      try {
+        const fresh = await fetch(req);
+        cache.put('./', fresh.clone());
+        return fresh;
+      } catch (e) {
+        return cached || new Response('<h1>オフライン</h1>', {headers:{'Content-Type':'text/html'}});
+      }
+    })());
+    return;
+  }
+  // その他のGETはキャッシュ優先の stale-while-revalidate
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(req);
+    const network = fetch(req).then(res => { cache.put(req, res.clone()); return res; }).catch(() => null);
+    return cached || network || Response.error();
+  })());
+});
+
+3) アイコン画像（任意のロゴでOK / 透明背景推奨）
+- icons/icon-192.png
+- icons/icon-512.png
+- icons/maskable-512.png（角が切れないよう上下左右に余白多め）
+
+※ GitHub Pages の Settings→Pages を有効にすると、PWAとしてホーム画面追加・オフライン動作できます。
+========================================================================
+-->
 </body>
 </html>
