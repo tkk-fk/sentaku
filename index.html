@@ -8,6 +8,7 @@
   :root{
     --bg:#ffffff; --fg:#0f172a; --muted:#e5e7eb;
     --card:#f8fafc; --btn:#111827; --btnfg:#ffffff;
+    --gap:10px;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
   html,body{ height:100%; }
@@ -15,13 +16,19 @@
     margin:0; background:var(--bg); color:var(--fg);
     font-family: system-ui,-apple-system,"Noto Sans JP","Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
     line-height:1.4; touch-action: manipulation;
+    padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .app{ min-height:100dvh; display:flex; flex-direction:column; gap:8px; }
-  header.panel{ padding:8px 12px; background:var(--card); border-bottom:1px solid var(--muted); }
+  .app{ min-height:100dvh; min-height:100svh; display:flex; flex-direction:column; gap:8px; }
+
+  header.panel{
+    padding:calc(8px + env(safe-area-inset-top)) 12px 8px 12px;
+    background:var(--card); border-bottom:1px solid var(--muted);
+  }
   .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  select, input[type="text"]{ font-size:16px; padding:8px 10px; border:1px solid var(--muted); border-radius:10px; background:#fff; }
-  label.inline{ display:inline-flex; align-items:center; gap:6px; padding:6px 8px; border:1px solid var(--muted); border-radius:999px; background:#fff; }
-  button{ font-size:16px; padding:10px 14px; border-radius:12px; border:1px solid var(--muted); background:#fff; cursor:pointer; }
+  select, input[type="text"]{ font-size:16px; padding:10px 12px; border:1px solid var(--muted); border-radius:10px; background:#fff; }
+  label.inline{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--muted); border-radius:999px; background:#fff; }
+  button{ font-size:16px; padding:12px 16px; border-radius:12px; border:1px solid var(--muted); background:#fff; cursor:pointer; }
   button.ghost{ background:transparent; }
   button.primary{ background:var(--btn); color:var(--btnfg); border-color:var(--btn); }
   .hint{ font-size:12px; opacity:.7; }
@@ -31,13 +38,19 @@
   #editors .colspan4{ grid-column: span 4; }
   .hidden{ display:none !important; }
 
-  main#stage{ flex:1; display:grid; gap:10px; padding:10px; align-items:stretch; justify-items:stretch; }
-  .two{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-  .three{ grid-template-columns: 1fr 1fr 1fr; }
-  .four{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+  main#stage{ flex:1; display:grid; gap:var(--gap); padding:var(--gap); align-items:stretch; justify-items:stretch; }
+  .two{ grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
+  .three{ grid-template-columns: 1fr 1fr 1fr; grid-auto-rows: 1fr; }
+  .four{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; grid-auto-rows: 1fr; }
 
-  .choice{ display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid var(--muted); border-radius:18px; background:#fff; font-size: clamp(24px, 6vw, 48px); font-weight:700; user-select:none; -webkit-user-select:none; min-height:120px; }
-  .choice .sub{ font-size: clamp(14px, 3.8vw, 22px); margin-top:6px; opacity:.85; }
+  .choice{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:2px solid var(--muted); border-radius:18px; background:#fff;
+    font-size: clamp(22px, 6vw, 48px); font-weight:700; text-align:center;
+    user-select:none; -webkit-user-select:none; min-height:110px; aspect-ratio: 1/1;
+    padding:10px;
+  }
+  .choice .sub{ font-size: clamp(14px, 3.5vw, 22px); margin-top:6px; opacity:.85; }
   .blue{ background:#eff6ff; border-color:#bfdbfe; }
   .amber{ background:#fffbeb; border-color:#fde68a; }
   .green{ background:#ecfdf5; border-color:#bbf7d0; }
@@ -46,18 +59,43 @@
   .choice:active{ transform: scale(.98); }
 
   /* オーバーレイ */
-  #overlay{ position: fixed; inset:0; background: rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:20; }
+  #overlay{ position: fixed; inset:0; background: rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:20; padding:var(--gap); }
   #overlay .card{ background:#fff; padding:24px; border-radius:24px; width:min(92vw,680px); text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.25); }
-  #overlay .big{ font-size: clamp(40px, 10vw, 72px); font-weight:800; }
-  #overlay .big .small{ display:block; font-size: clamp(16px, 4.2vw, 22px); opacity:.75; margin-top:6px; }
-  #overlay .close{ margin-top:14px; }
+  #overlay .big{ font-size: clamp(40px, 10vw, 76px); font-weight:800; }
+  #overlay .big .small{ display:block; font-size: clamp(16px, 4.2vw, 24px); opacity:.75; margin-top:6px; }
+  #overlay .close{ margin-top:16px; padding:12px 16px; }
 
   /* プレゼン（操作パネル隠し＋ロック） */
   .presentation header.panel{ display:none; }
-  #unlockButton{ position:fixed; left:8px; top:8px; z-index:31; font-size:14px; padding:6px 10px; border-radius:999px; border:1px solid var(--muted); background:#fff; opacity:0.85; cursor:pointer; display:none; }
+  #unlockButton{
+    position:fixed; left:calc(8px + env(safe-area-inset-left)); top:calc(8px + env(safe-area-inset-top)); z-index:31;
+    font-size:15px; padding:8px 12px; border-radius:999px; border:1px solid var(--muted);
+    background:#fff; opacity:0.9; cursor:pointer; display:none;
+  }
   .presentation #unlockButton{ display:block; }
 
   #stage, .choice, #overlay{ overscroll-behavior: contain; }
+
+  /* ===== スマホ縦向き：幅が狭いときの最適化 ===== */
+  @media (max-width: 480px){
+    :root{ --gap:8px; }
+    main#stage{ padding:var(--gap); }
+    .choice{ font-size: clamp(20px, 6.5vw, 40px); min-height: 90px; }
+    .three{ grid-template-columns: 1fr 1fr; }
+    .three .choice:last-child{ grid-column: 1 / -1; }
+  }
+
+  /* ===== 横向きや小さな高さの画面 ===== */
+  @media (max-height: 480px){
+    .choice{ font-size: clamp(18px, 6vh, 36px); min-height: 80px; }
+    #overlay .big{ font-size: clamp(32px, 12vh, 60px); }
+  }
+
+  /* ===== タブレット以上 ===== */
+  @media (min-width: 768px){
+    .choice{ font-size: clamp(28px, 3.8vw, 56px); }
+    #editors{ grid-template-columns: repeat(6, minmax(120px, 1fr)); }
+  }
 </style>
 </head>
 <body>
@@ -137,17 +175,15 @@
   const third = $('#third');
   const tInputs = [$('#t1'), $('#t2'), $('#t3'), $('#t4')];
 
-  const save = () => localStorage.setItem('selectAid:v7', JSON.stringify(state));
-  const load = () => {
-    try{ const s = JSON.parse(localStorage.getItem('selectAid:v7')); if(s){ Object.assign(state, s); } }catch(e){}
-  };
+  const save = () => localStorage.setItem('selectAid:v8', JSON.stringify(state));
+  const load = () => { try{ const s = JSON.parse(localStorage.getItem('selectAid:v8')); if(s){ Object.assign(state, s); } }catch(e){} };
 
   const clearStage = () => stage.innerHTML = '';
 
   const makeChoice = ({text, sub='', cls=''}) => {
     const btn = document.createElement('button');
     btn.className = `choice ${cls}`;
-    btn.innerHTML = `<div>${text}</div>${sub? `<div class="sub">${sub}</div>` : ''}`;
+    btn.innerHTML = `<div>${text}</div>${sub? `<div class=\"sub\">${sub}</div>` : ''}`;
     btn.addEventListener('click', () => onPick(text, sub));
     return btn;
   };
